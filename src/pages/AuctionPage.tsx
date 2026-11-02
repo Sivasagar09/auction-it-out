@@ -8,9 +8,12 @@ import { Leaderboard, PointsRules, ScoreEntry } from '../components/Points';
 import Chat from '../components/Chat';
 import VideoCall from '../components/VideoCall';
 import { isSeries, SeriesSetup } from '../components/Series';
+import Captains, { CaptainReminder, openPickFor } from '../components/Captains';
 import { say, speechSupported, useAnnouncer, useAnnouncerSettings } from '../lib/announcer';
 
-type Tab = 'room' | 'board' | 'rules' | 'scores';
+type Tab = 'room' | 'board' | 'captains' | 'rules' | 'scores';
+
+const players = (s: { players: { sold_to: string | null }[] }, t: { id: string } | null) => (t ? s.players.filter(p => p.sold_to === t.id).length : 0);
 
 export default function AuctionPage({ session }: { session: Session }) {
   const { id = '' } = useParams();
@@ -31,6 +34,8 @@ export default function AuctionPage({ session }: { session: Session }) {
   const myTeam = state.teams.find(t => t.user_id === session.user.id) || null;
   const props = { ...state, auction, isOwner, myTeam, userId: session.user.id };
   const call = <VideoCall a={auction} isOwner={isOwner} onSaved={state.reload} />;
+  const cap = { windows: state.capWindows, picks: state.capPicks, now: state.now };
+  const reminder = openPickFor(state.capWindows, state.capStatus, myTeam, state.now);
   const chat = <Chat a={auction} chat={state.chat} teams={state.teams} userId={session.user.id} isOwner={isOwner} onSent={state.reload} />;
 
   if (auction.status === 'setup') {
@@ -49,6 +54,7 @@ export default function AuctionPage({ session }: { session: Session }) {
   const tabs: [Tab, string][] = [
     ['room', completed ? 'Auction results' : 'Auction room'],
     ['board', isSeries(auction, state.matches) ? 'Series leaderboard' : 'Leaderboard'],
+    ['captains', 'Captain picks'],
     ['rules', 'Points rules'],
     ...(isOwner ? [['scores', 'Enter scores'] as [Tab, string]] : []),
   ];
@@ -78,8 +84,11 @@ export default function AuctionPage({ session }: { session: Session }) {
           </div>
         )}
       </nav>
+      {reminder && current !== 'captains' && players(state, myTeam) >= 2 && <CaptainReminder w={reminder} now={state.now} onOpen={() => setTab('captains')} />}
       {current === 'room' && <Room {...props} />}
-      {current === 'board' && <Leaderboard a={auction} teams={state.teams} players={state.players} scores={state.scores} matches={state.matches} myTeam={myTeam} />}
+      {current === 'captains' && <Captains a={auction} isOwner={isOwner} myTeam={myTeam} teams={state.teams} players={state.players} matches={state.matches}
+        windows={state.capWindows} picks={state.capPicks} status={state.capStatus} now={state.now} onSaved={state.reload} />}
+      {current === 'board' && <Leaderboard a={auction} teams={state.teams} players={state.players} scores={state.scores} matches={state.matches} myTeam={myTeam} cap={cap} />}
       {current === 'rules' && <PointsRules a={auction} isOwner={isOwner} onSaved={state.reload} />}
       {current === 'scores' && isOwner && <ScoreEntry a={auction} teams={state.teams} players={state.players} scores={state.scores} matches={state.matches} onSaved={state.reload} />}
       {chat}

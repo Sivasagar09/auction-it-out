@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from './supabase';
-import type { Auction, Bid, ChatMessage, Match, Player, PlayerScore, Team } from './types';
+import type { Auction, Bid, CaptainPick, CaptainStatus, CaptainWindow, ChatMessage, Match, Player, PlayerScore, Team } from './types';
 
 export interface AuctionState {
   auction: Auction | null;
@@ -11,6 +11,10 @@ export interface AuctionState {
   /** Matches in this auction, in order (one for a single-match auction). */
   matches: Match[];
   chat: ChatMessage[];
+  /** Captain/vice-captain pick rounds, the picks this person may see, and who has picked. */
+  capWindows: CaptainWindow[];
+  capPicks: CaptainPick[];
+  capStatus: CaptainStatus[];
   loading: boolean;
   error: string | null;
   deleted: boolean;
@@ -34,6 +38,9 @@ export function useAuction(id: string): AuctionState {
   const [scores, setScores] = useState<PlayerScore[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
   const [chat, setChat] = useState<ChatMessage[]>([]);
+  const [capWindows, setCapWindows] = useState<CaptainWindow[]>([]);
+  const [capPicks, setCapPicks] = useState<CaptainPick[]>([]);
+  const [capStatus, setCapStatus] = useState<CaptainStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deleted, setDeleted] = useState(false);
@@ -50,18 +57,25 @@ export function useAuction(id: string): AuctionState {
   }, [id]);
 
   const loadRest = useCallback(async () => {
-    const [t, p, b, s, m] = await Promise.all([
+    const [t, p, b, s, m, cw, cp, cs] = await Promise.all([
       supabase.from('teams').select('*').eq('auction_id', id).order('joined_at'),
       supabase.from('players').select('*').eq('auction_id', id).order('order_no').order('name'),
       supabase.from('bids').select('*').eq('auction_id', id).order('id', { ascending: false }).limit(80),
       supabase.from('player_scores').select('*').eq('auction_id', id),
       supabase.from('matches').select('*').eq('auction_id', id).order('match_no'),
+      supabase.from('captain_windows').select('*').eq('auction_id', id).order('from_match_no'),
+      supabase.from('captain_picks').select('*').eq('auction_id', id),
+      supabase.rpc('captain_status', { p_auction: id }),
     ]);
     if (t.data) setTeams(t.data as Team[]);
     if (p.data) setPlayers(p.data as Player[]);
     if (b.data) setBids(b.data as Bid[]);
     if (s.data) setScores(s.data as PlayerScore[]);
     if (m.data) setMatches(m.data as Match[]); // stays empty if the series update isn't in the database yet
+    // Captain picks stay empty until update 8 is in the database.
+    if (cw.data) setCapWindows(cw.data as CaptainWindow[]);
+    if (cp.data) setCapPicks(cp.data as CaptainPick[]);
+    if (cs.data) setCapStatus(cs.data as CaptainStatus[]);
     const err = t.error || p.error || b.error;
     if (err) setError(err.message);
   }, [id]);
@@ -97,6 +111,8 @@ export function useAuction(id: string): AuctionState {
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'bids', filter: `auction_id=eq.${id}` }, soonRest)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'player_scores', filter: `auction_id=eq.${id}` }, soonRest)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'matches', filter: `auction_id=eq.${id}` }, soonRest)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'captain_windows', filter: `auction_id=eq.${id}` }, soonRest)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'captain_picks', filter: `auction_id=eq.${id}` }, soonRest)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `auction_id=eq.${id}` }, payload => {
         const m = payload.new as ChatMessage;
         setChat(prev => (prev.some(x => x.id === m.id) ? prev : [...prev, m].slice(-200)));
@@ -162,5 +178,16 @@ export function useAuction(id: string): AuctionState {
     });
   }, [now, loadAuction]);
 
-  return { auction, teams, players, bids, scores, matches, chat, loading, error, deleted, now, reload };
+  // When a pick deadline passes and some teams haven't picked, ask the server to fill
+  // in their picks (most expensive players). Any open browser can do it; it happens once.
+  const lastFinal = useRef(0);
+  useEffect(() => {
+    const due = capWindows.some(w => new Date(w.deadline).getTime() <= now
+      && capStatus.filter(x => x.window_id === w.id).length < teams.filter(t => players.some(p => p.sold_to === t.id)).length);
+    if (!due || Date.now() - lastFinal.current < 15000) return;
+    lastFinal.current = Date.now();
+    supabase.rpc('finalize_captain_windows', { p_auction: id }).then(({ error }) => { if (!error) loadRest(); });
+  }, [now, capWindows, capStatus, teams, players, id, loadRest]);
+
+  return { auction, teams, players, bids, scores, matches, chat, capWindows, capPicks, capStatus, loading, error, deleted, now, reload };
 }

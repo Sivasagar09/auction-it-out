@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { errorText, supabase } from '../lib/supabase';
-import { calcPoints, DEFAULT_RULES, figures, RULE_GROUPS, rulesOf, seriesFigures, teamTotals, type PlayerLine, type RuleKey } from '../lib/points';
+import { calcPoints, DEFAULT_RULES, figures, roleIn, RULE_GROUPS, rulesOf, seriesFigures, teamTotals, type CaptainData, type PlayerLine, type RuleKey } from '../lib/points';
 import { ROLE } from '../lib/rules';
 import type { Auction, Match, Player, PlayerScore, Team } from '../lib/types';
 import Avatar from './Avatar';
 import { isSeries, MatchDetails, MatchPicker } from './Series';
 import { ScorecardImport, ScorecardSource } from './ScorecardImport';
+import './captains.css';
 
 const fmtPts = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
 
@@ -96,12 +97,12 @@ function shareText(a: Auction, rows: ReturnType<typeof teamTotals>, matches: Mat
 // ---------------------------------------------------------------------
 // Leaderboard: every team's total, with each player's points.
 // ---------------------------------------------------------------------
-export function Leaderboard({ a, teams, players, scores, matches = [], myTeam }: { a: Auction; teams: Team[]; players: Player[]; scores: PlayerScore[]; matches?: Match[]; myTeam: Team | null }) {
+export function Leaderboard({ a, teams, players, scores, matches = [], myTeam, cap }: { a: Auction; teams: Team[]; players: Player[]; scores: PlayerScore[]; matches?: Match[]; myTeam: Team | null; cap?: CaptainData }) {
   const series = isSeries(a, matches);
   const [sel, setSel] = useState<string>('all');
   const matchId = series && sel !== 'all' ? sel : null;
   const cur = matches.find(m => m.id === matchId) ?? null;
-  const rows = useMemo(() => teamTotals(teams, players, scores, a.points_rules, matches, matchId), [teams, players, scores, a.points_rules, matches, matchId]);
+  const rows = useMemo(() => teamTotals(teams, players, scores, a.points_rules, matches, matchId, cap), [teams, players, scores, a.points_rules, matches, matchId, cap]);
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const [why, setWhy] = useState<string | null>(null);
   const latest = scores.reduce<string>((m, s) => (s.updated_at > m ? s.updated_at : m), '');
@@ -155,11 +156,14 @@ export function Leaderboard({ a, teams, players, scores, matches = [], myTeam }:
                   {r.squad.map(x => (
                     <li key={x.p.id} className="tap" onClick={() => setWhy(w => (w === x.p.id ? null : x.p.id))}>
                       <Avatar p={x.p} size={30} />
-                      <span className="who-col"><b>{x.p.name}</b><span className="empty">{ROLE[x.p.role]} · {fig(x)}</span>
+                      <span className="who-col"><b>{x.p.name}{roleIn(r.pick, x.p.id) && <> <span className={`cbadge${roleIn(r.pick, x.p.id) === 'VC' ? ' vc' : ''}`} title={roleIn(r.pick, x.p.id) === 'C' ? 'Captain' : 'Vice-captain'}>{roleIn(r.pick, x.p.id)}</span></>}</b><span className="empty">{ROLE[x.p.role]} · {fig(x)}</span>
                         {why === x.p.id && x.b.parts.length > 0 && <span className="why-pts">{x.b.parts.map(pp => `${pp.label} ${pp.pts > 0 ? '+' : ''}${fmtPts(pp.pts)}`).join(' · ')}</span>}
                       </span>
                       <span className="pts num">{has(x) ? fmtPts(x.b.total) : '–'}</span>
                     </li>
+                  ))}
+                  {r.penalties.map((pn, k) => (
+                    <li key={`pen-${k}`} className="penalty-line"><span className="who-col"><b>{pn.label}</b><span className="empty">Penalty agreed in the points rules</span></span><span className="pts num">{fmtPts(pn.pts)}</span></li>
                   ))}
                   {!r.squad.length && <li className="empty">No players bought.</li>}
                 </ul>
@@ -182,7 +186,7 @@ export function Leaderboard({ a, teams, players, scores, matches = [], myTeam }:
           </ul>
         </section>
       )}
-      <p className="empty">Tap a team to see its players, and tap a player to see how their points were worked out{series && !matchId ? ' match by match' : ''}.</p>
+      <p className="empty">Tap a team to see its players, and tap a player to see how their points were worked out{series && !matchId ? ' match by match' : ''}.{rows.some(r => r.pick) ? ` C = captain (${rulesOf(a.points_rules).captain}× points), VC = vice-captain (${rulesOf(a.points_rules).vice}×)${series && !matchId ? ', as picked for the latest matches' : ''}.` : ''}</p>
     </>
   );
 }

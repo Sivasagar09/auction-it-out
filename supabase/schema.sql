@@ -42,7 +42,7 @@ create table if not exists public.auctions (
 );
 
 create table if not exists public.bids (
-  id bigint not null,
+  id bigint generated always as identity,
   auction_id uuid not null,
   player_id uuid not null,
   team_id uuid not null,
@@ -51,7 +51,7 @@ create table if not exists public.bids (
 );
 
 create table if not exists public.chat_messages (
-  id bigint not null,
+  id bigint generated always as identity,
   auction_id uuid not null,
   user_id uuid,
   team_id uuid,
