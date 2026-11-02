@@ -1,0 +1,26 @@
+/* Paste-a-scorecard, original scorecard view, WhatsApp share, admin overview */
+.sc-cta{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px;border:1px dashed var(--accent);border-radius:var(--r);background:var(--accent-soft)}
+.sc-import{display:flex;flex-direction:column;gap:12px;border:1px solid var(--accent);border-radius:var(--r);padding:14px;background:var(--surface-2)}
+.sc-import h3{margin:0;font-family:var(--display);font-size:22px;text-transform:uppercase;letter-spacing:.02em}
+.sc-steps{margin:0;padding-left:20px;font-size:14px;display:flex;flex-direction:column;gap:4px}
+.sc-steps kbd{border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 5px;font-size:12px;background:var(--surface)}
+.sc-text{width:100%;min-height:180px;resize:vertical;border:1px solid var(--line);border-radius:8px;padding:10px;background:var(--surface);font:13px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace}
+.sc-summary{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.warn-tag{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 45%,var(--line))}
+.sc-table select{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:4px 6px;max-width:220px}
+.sc-table td{vertical-align:top}
+.sc-table tr.sc-warn td{background:color-mix(in srgb,var(--warn) 10%,transparent)}
+.sc-table tr.sc-dim td{opacity:.6}
+.sc-tag-ok{color:var(--ok);border-color:color-mix(in srgb,var(--ok) 45%,var(--line))}
+.sc-tag-warn{color:var(--warn);border-color:var(--warn);font-weight:700}
+.sc-tag-muted{color:var(--muted)}
+.sc-source{padding:10px 14px;display:flex;flex-direction:column;gap:6px;font-size:14px}
+.sc-source .row-inline{gap:12px;flex-wrap:wrap}
+.sc-original{margin:0;max-height:360px;overflow:auto;white-space:pre-wrap;word-break:break-word;font:12px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:10px}
+.wa-btn{background:#1FA855;border-color:#1FA855;color:#fff;text-decoration:none;font-weight:700;white-space:nowrap}
+.wa-btn:hover{filter:brightness(1.06);border-color:#1FA855}
+.board-sub{margin-top:-8px}
+.admin-panel h2{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.admin-stats{margin:0}
+.admin-table td{vertical-align:top}
+.admin-table td .tag{margin-left:6px}
