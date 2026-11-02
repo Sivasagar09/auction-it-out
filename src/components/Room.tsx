@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { errorText, supabase } from '../lib/supabase';
-import { fmt, maxBidFor, missingRoles, nextBid, roleCounts, ROLE, squadOf, stepFor, whyNot } from '../lib/rules';
+import { fmt, maxBidFor, nextBid, roleCounts, ROLE, squadOf, stepFor, whyNot } from '../lib/rules';
 import type { Auction, Player, Team } from '../lib/types';
 import type { AuctionState } from '../lib/useAuction';
 import Avatar from './Avatar';
+import './arena.css';
 
 type Props = AuctionState & { auction: Auction; isOwner: boolean; myTeam: Team | null; userId: string };
 
@@ -104,81 +105,100 @@ export default function Room(props: Props) {
 
           {a.status === 'completed' ? (
             <Done a={a} players={players} teams={teams} isOwner={isOwner} onUnsold={() => admin('start_unsold_round')} />
-          ) : shown ? (
-            <div className="stage-body">
-              <div className="player">
-                <div className="player-top">
-                  <Avatar p={shown} size={112} />
-                  <div className="player-id">
-                    <div className="role-row">
-                      <span className="tag role">{ROLE[shown.role]}</span>
-                      {shown.country && <span className="tag">{shown.country}</span>}
-                      {a.phase === 'gap' && <span className="tag">Up next</span>}
+          ) : (
+            <div className="arena">
+              {teams.map((t, i) => {
+                const st = stateOf(a, t, players);
+                const isLead = st.kind === 'lead';
+                return (
+                  <div key={t.id} className={`seat${SEATS[i] ? ` seat-${SEATS[i]}` : ''}${isLead ? ` lead ${a.phase === 'live' ? (a.bid_count % 2 ? 'flashA' : 'flashB') : ''}` : ''}${st.kind === 'no' ? ' out' : ''}`}
+                    style={{ '--seat': t.color } as CSSProperties}>
+                    <div className="tile">
+                      <span className="face" aria-hidden="true">{initialsOf(t.name)}</span>
+                      {isLead && <span className="lead-tag num">{a.phase === 'result' ? 'Won' : 'Highest'} {fmt(a.current_bid)}</span>}
                     </div>
-                    <h3 className="pname">{shown.name}</h3>
+                    <div className="seat-name">
+                      <span className="mini" aria-hidden="true">{initialsOf(t.name)}</span>
+                      <span className="n">{t.name}</span>
+                      {t.id === myTeam?.id && <span className="you-tag">You</span>}
+                    </div>
                   </div>
-                </div>
-                {shown.stats?.length > 0 && (
-                  <div className="stats">
-                    {shown.stats.slice(0, 8).map((st, i) => <div className="stat" key={i}><div className="label">{st.label}</div><div className="v num">{st.value}</div></div>)}
-                  </div>
-                )}
-                <div className="facts">
-                  <div className="fact"><div className="label">Base price</div><div className="v num">{fmt(shown.base_price)}</div></div>
-                  <div className="fact"><div className="label">Next raise</div><div className="v num">+{fmt(stepFor(a.increments, a.phase === 'live' && leader ? a.current_bid ?? shown.base_price : shown.base_price))}</div></div>
-                </div>
-              </div>
-              <div className="bidside">
-                <div className="bidline">
-                  <div>
-                    <div className="label">{a.phase === 'live' && leader ? 'Current bid' : 'Opening at'}</div>
-                    <div className="amount num" key={a.bid_count}>{fmt(a.phase === 'live' ? a.current_bid : shown.base_price)}</div>
-                  </div>
-                  <div className={`ring${low ? ' low' : ''}${a.phase !== 'live' ? ' wait' : ''}`}>
-                    <svg viewBox="0 0 96 96"><circle className="track" cx="48" cy="48" r="42" /><circle className="prog" cx="48" cy="48" r="42" strokeDasharray={CIRC} strokeDashoffset={CIRC * (1 - frac)} /></svg>
-                    <div className="sec num">{Math.ceil(left / 1000)}</div>
-                  </div>
-                </div>
-                <div className="leader">
-                  {a.phase === 'live' && leader
-                    ? <><span className="swatch" style={{ background: leader.color }} />{leader.id === myTeam?.id ? 'You lead' : `${leader.name} leads`}</>
-                    : <span className="empty">{a.phase === 'gap' ? 'Bidding opens in a moment' : 'No bids yet'}</span>}
-                </div>
-                {myTeam ? (
+                );
+              })}
+
+              <div className="centre" style={{ '--lead': leader && a.phase !== 'gap' ? leader.color : undefined } as CSSProperties}>
+                {shown ? (
                   <>
-                    <button className="bidbtn" onClick={bid} disabled={!canBid}>
-                      <span className="big num">{pending ? 'Bidding…' : `Bid ${fmt(a.phase === 'live' ? amount : shown.base_price)}`}</span>
-                      <span className="small">{canBid ? <>Press <span className="kbd">B</span> or tap</> : ' '}</span>
-                    </button>
-                    <div className={`why${flash ? ' alert' : ''}`}>{flash || (a.phase === 'live' && reason !== 'no-team' ? reason : '')}</div>
+                    <div className="who">
+                      <Avatar p={shown} size={72} />
+                      <div className="player-id">
+                        <h3 className="pname">{shown.name}</h3>
+                        <div className="role-row">
+                          <span className="tag role">{ROLE[shown.role]}</span>
+                          {shown.country && <span className="tag">{shown.country}</span>}
+                          {a.phase === 'gap' && <span className="tag">Up next</span>}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="bidline">
+                      <div className={`ring${low ? ' low' : ''}${a.phase !== 'live' ? ' wait' : ''}`}>
+                        <svg viewBox="0 0 96 96"><circle className="track" cx="48" cy="48" r="42" /><circle className="prog" cx="48" cy="48" r="42" strokeDasharray={CIRC} strokeDashoffset={CIRC * (1 - frac)} /></svg>
+                        <div className="sec num">{Math.ceil(left / 1000)}</div>
+                      </div>
+                      <div style={{ textAlign: 'left' }}>
+                        <div className="label">{a.phase === 'live' && leader ? 'Current bid' : 'Opening at'}</div>
+                        <div className="amount num" key={a.bid_count}>{fmt(a.phase === 'live' ? a.current_bid : shown.base_price)}</div>
+                        <div className="leader">
+                          {a.phase === 'live' && leader
+                            ? <><span className="swatch" style={{ background: leader.color }} />{leader.id === myTeam?.id ? 'You lead' : `${leader.name} leads`}</>
+                            : <span className="empty">{a.phase === 'gap' ? 'Bidding opens in a moment' : 'No bids yet'}</span>}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="facts-row">
+                      <span>Base <b className="num">{fmt(shown.base_price)}</b></span>
+                      <span>Next raise <b className="num">+{fmt(stepFor(a.increments, a.phase === 'live' && leader ? a.current_bid ?? shown.base_price : shown.base_price))}</b></span>
+                      {a.phase === 'live' && <span>Bids <b className="num">{a.bid_count}</b></span>}
+                    </div>
+                    {myTeam ? (
+                      <>
+                        <button className="bidbtn" onClick={bid} disabled={!canBid}>
+                          <span className="big num">{pending ? 'Bidding…' : `Bid ${fmt(a.phase === 'live' ? amount : shown.base_price)}`}</span>
+                          <span className="small">{canBid ? <>Press <span className="kbd">B</span> or tap</> : ' '}</span>
+                        </button>
+                        <div className={`why${flash ? ' alert' : ''}`}>{flash || (a.phase === 'live' && reason !== 'no-team' ? reason : '')}</div>
+                      </>
+                    ) : (
+                      <div className="msg">You're running this auction without a team, so you can watch but not bid.</div>
+                    )}
                   </>
                 ) : (
-                  <div className="msg">You're running this auction without a team, so you can watch but not bid.</div>
+                  <span className="empty" style={{ margin: 'auto' }}>Getting the next player ready…</span>
+                )}
+
+                {a.phase === 'result' && current && (
+                  <div className="result">
+                    {leader ? (
+                      <div><div className="stamp" style={{ color: leader.color, borderColor: leader.color }}>Sold</div>
+                        <p>{current.name} to <span style={{ color: leader.color }}>{leader.id === myTeam?.id ? 'you' : leader.name}</span></p>
+                        <div className="sub num">for {fmt(a.current_bid)} · {a.bid_count} bid{a.bid_count === 1 ? '' : 's'}</div></div>
+                    ) : (
+                      <div><div className="stamp unsold">Unsold</div><p>{current.name}</p><div className="sub">No bids at base price {fmt(current.base_price)}</div></div>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
-          ) : (
-            <div className="done"><span className="empty">Getting the next player ready…</span></div>
           )}
 
-          {a.phase === 'result' && a.status !== 'completed' && current && (
-            <div className="overlay">
-              {leader ? (
-                <div><div className="stamp">Sold</div>
-                  <p>{current.name} to <span style={{ color: leader.color }}>{leader.id === myTeam?.id ? 'you' : leader.name}</span></p>
-                  <div className="sub num">for {fmt(a.current_bid)} · {a.bid_count} bid{a.bid_count === 1 ? '' : 's'}</div></div>
-              ) : (
-                <div><div className="stamp unsold">Unsold</div><p>{current.name}</p><div className="sub">No bids at base price {fmt(current.base_price)}</div></div>
-              )}
-            </div>
-          )}
+          <TeamTable a={a} teams={teams} players={players} myTeam={myTeam} current={a.phase === 'live' ? current : null} />
+
           {a.status === 'paused' && (
             <div className="overlay"><div><div className="stamp unsold">Paused</div><p>The admin paused the auction</p><div className="sub">The clock continues from {Math.ceil(left / 1000)}s when it resumes.</div></div></div>
           )}
         </section>
 
         <aside className="side">
-          {myTeam && <YourTeam a={a} team={myTeam} players={players} current={a.phase === 'live' ? current : null} />}
           <section className="panel feed">
             <div className="label">Bids on {a.phase === 'live' || a.phase === 'result' ? current?.name ?? 'this player' : 'this player'}</div>
             <ol>
@@ -188,7 +208,28 @@ export default function Room(props: Props) {
               })}
               {!(a.phase === 'live' || a.phase === 'result') || !bids.some(b => b.player_id === a.current_player_id) ? <li className="empty">No bids yet.</li> : null}
             </ol>
-            <div className="label" style={{ paddingTop: 14 }}>Recent results</div>
+          </section>
+          {a.status !== 'completed' && (
+            <section className="panel feed">
+              <div className="label">Who can bid next</div>
+              <ul className="nextlist">
+                {teams.map(t => {
+                  const st = stateOf(a, t, players);
+                  return (
+                    <li key={t.id}>
+                      <span className="swatch" style={{ background: t.color }} />
+                      <span className="n">{t.id === myTeam?.id ? 'You' : t.name}</span>
+                      <span className={`s ${st.kind === 'ok' ? 'ok' : st.kind === 'lead' ? '' : 'no'}`} style={st.kind === 'lead' ? { color: t.color, fontWeight: 700 } : undefined} title={st.why}>
+                        {st.kind === 'ok' ? `Can bid · max ${fmt(maxBidFor(a, t, players, a.phase === 'live' ? current : null))}` : st.text}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          )}
+          <section className="panel feed">
+            <div className="label">Recent results</div>
             <ol>
               {players.filter(p => p.status === 'sold').sort((x, y) => (y.sold_at || '').localeCompare(x.sold_at || '')).slice(0, 6).map(p => {
                 const t = team(p.sold_to);
@@ -222,23 +263,70 @@ function ReqChips({ a, team, players }: { a: Auction; team: Team; players: Playe
   );
 }
 
-function YourTeam({ a, team, players, current }: { a: Auction; team: Team; players: Player[]; current: Player | null }) {
-  const n = squadOf(team, players).length;
+/** Seat positions around the player: corners and sides first, extra teams fill the gaps. */
+const SEATS = ['a', 'c', 'd', 'e', 'f', 'g', 'h', 'i'];
+
+function initialsOf(name: string) {
+  const w = name.replace(/[^A-Za-z0-9\s]/g, ' ').trim().split(/\s+/).filter(Boolean);
+  return ((w[0]?.[0] || '?') + (w.length > 1 ? w[1][0] : '')).toUpperCase();
+}
+
+type SeatState = { kind: 'lead' | 'ok' | 'no' | 'idle'; text: string; why?: string };
+
+/** Where a team stands on the current player: leading, can bid, or out (and why). */
+function stateOf(a: Auction, t: Team, players: Player[]): SeatState {
+  const live = a.status !== 'completed' && (a.phase === 'live' || a.phase === 'result');
+  if (live && a.leader_team_id === t.id) return { kind: 'lead', text: a.phase === 'result' ? 'Won' : 'Leading' };
+  if (a.status === 'completed' || a.phase !== 'live') return { kind: 'idle', text: '–' };
+  const why = whyNot(a, t, players);
+  if (!why) return { kind: 'ok', text: 'Can bid' };
+  if (why.includes('full')) return { kind: 'no', text: 'Squad full', why };
+  if (why.startsWith('Not enough') || why.startsWith('Keep')) return { kind: 'no', text: 'Out · purse', why };
+  if (why.includes('bowlers or all-rounders')) return { kind: 'no', text: 'Needs other roles', why };
+  return { kind: 'no', text: "Can't bid", why };
+}
+
+function needsText(a: Auction, t: Team, players: Player[]) {
+  const c = roleCounts(t, players);
+  const n = squadOf(t, players).length;
+  const out: string[] = [];
+  const b = a.min_bowlers - c.BOWL, ar = a.min_allrounders - c.AR, sq = a.min_squad - n;
+  if (b > 0) out.push(`${b} bowler${b > 1 ? 's' : ''}`);
+  if (ar > 0) out.push(`${ar} all-rounder${ar > 1 ? 's' : ''}`);
+  if (sq > 0) out.push(`${sq} player${sq > 1 ? 's' : ''}`);
+  return out.join(', ');
+}
+
+/** Purse, squad and bidding status for every team, under the auction table. */
+function TeamTable({ a, teams, players, myTeam, current }: { a: Auction; teams: Team[]; players: Player[]; myTeam: Team | null; current: Player | null }) {
   return (
-    <section className="panel you">
-      <div className="you-head"><span className="swatch" style={{ background: team.color }} /><b>{team.name}</b><span className="tag" style={{ marginLeft: 'auto' }}>Your team</span></div>
-      <div><div className="label">Purse left</div><div className="purse num">{fmt(team.purse_left)}</div></div>
-      <div className="bar"><i style={{ width: `${(team.purse_left / a.purse) * 100}%` }} /></div>
-      <div className="kv">
-        <div><div className="label">Spent</div><div className="v num">{fmt(a.purse - team.purse_left)}</div></div>
-        <div><div className="label">Squad</div><div className="v num">{n} / {a.max_squad}</div></div>
-        <div><div className="label">Max bid</div><div className="v num">{fmt(maxBidFor(a, team, players, current))}</div></div>
+    <div className="teamtable">
+      <span className="label">Teams · purse and squad</span>
+      <div className="tablewrap">
+        <table>
+          <thead><tr><th>Team</th><th className="r">Purse left</th><th className="r">Spent</th><th className="r">Squad</th><th>Still needs</th><th className="r">Max bid</th><th>Status</th></tr></thead>
+          <tbody>
+            {teams.map(t => {
+              const st = stateOf(a, t, players);
+              const needs = needsText(a, t, players);
+              return (
+                <tr key={t.id} className={`${st.kind === 'lead' ? 'lead' : ''}${t.id === myTeam?.id ? ' me' : ''}`}>
+                  <td><span className="leader small-leader"><span className="swatch" style={{ background: t.color }} /><b>{t.name}</b>{t.id === myTeam?.id && <span className="tag" style={{ marginLeft: 6 }}>You</span>}</span></td>
+                  <td className="r num"><b>{fmt(t.purse_left)}</b></td>
+                  <td className="r num">{fmt(a.purse - t.purse_left)}</td>
+                  <td className="r num">{squadOf(t, players).length} / {a.max_squad}</td>
+                  <td><span className={`needs${needs ? '' : ' met'}`}>{needs || '✓ All set'}</span></td>
+                  <td className="r num"><b>{fmt(maxBidFor(a, t, players, current))}</b></td>
+                  <td>
+                    <span className={`state-tag ${st.kind}`} style={st.kind === 'lead' ? { background: t.color } : undefined} title={st.why}>{st.text}</span>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
-      <ReqChips a={a} team={team} players={players} />
-      {missingRoles(a, team, players) > 0 && n >= a.max_squad - missingRoles(a, team, players) && n < a.max_squad && (
-        <span className="hint warn-text">Your remaining places must go to the roles you still need.</span>
-      )}
-    </section>
+    </div>
   );
 }
 
