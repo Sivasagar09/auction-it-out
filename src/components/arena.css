@@ -62,3 +62,13 @@
   .seat .seat-name .mini{display:grid;width:26px;height:26px;border-radius:50%;place-items:center;background:var(--seat);color:#fff;font-size:12px;flex:none}
   .teamtable{padding:6px 12px 16px}
 }
+
+.upnext{max-height:460px!important}
+.upnext li .i{width:20px;color:var(--muted);font-size:12px}
+.upnext li .n{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
+.upnext li .rc{font-size:11px;font-weight:700;letter-spacing:.04em;padding:2px 7px;border-radius:5px;background:var(--surface-2);border:1px solid var(--line);white-space:nowrap}
+.upnext li .rc-BOWL{background:color-mix(in srgb,#2F6FDB 12%,var(--surface));border-color:transparent}
+.upnext li .rc-BAT{background:var(--accent-soft);border-color:transparent}
+.upnext li .rc-AR{background:color-mix(in srgb,var(--ok) 14%,var(--surface));border-color:transparent}
+.upnext li .rc-WK{background:color-mix(in srgb,#C2417A 12%,var(--surface));border-color:transparent}
+.upnext li .t{margin-left:0!important;min-width:52px;text-align:right;color:var(--muted);font-weight:600!important}

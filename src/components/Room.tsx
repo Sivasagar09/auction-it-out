@@ -22,6 +22,7 @@ export default function Room(props: Props) {
   const team = (id: string | null) => teams.find(t => t.id === id);
   const current = players.find(p => p.id === a.current_player_id) || null;
   const upcoming = players.find(p => p.status === 'pool') || null;
+  const queue = players.filter(p => p.status === 'pool');
   const leader = team(a.leader_team_id);
   const amount = nextBid(a);
   const reason = myTeam ? whyNot(a, myTeam, players) : 'no-team';
@@ -228,16 +229,23 @@ export default function Room(props: Props) {
               </ul>
             </section>
           )}
-          <section className="panel feed">
-            <div className="label">Recent results</div>
-            <ol>
-              {players.filter(p => p.status === 'sold').sort((x, y) => (y.sold_at || '').localeCompare(x.sold_at || '')).slice(0, 6).map(p => {
-                const t = team(p.sold_to);
-                return <li key={p.id} className={`res${t?.id === myTeam?.id ? ' mine' : ''}`}><span className="swatch" style={{ background: t?.color }} />{p.name} → {t?.id === myTeam?.id ? 'you' : t?.name}<span className="t num">{fmt(p.sold_price)}</span></li>;
-              })}
-              {!players.some(p => p.status === 'sold') && <li className="empty">Sold players appear here.</li>}
-            </ol>
-          </section>
+          {a.status !== 'completed' && (
+            <section className="panel feed">
+              <div className="label">Up next · {queue.length} player{queue.length === 1 ? '' : 's'}</div>
+              <ol className="upnext">
+                {queue.slice(0, 15).map((p, i) => (
+                  <li key={p.id}>
+                    <span className="i num">{i + 1}</span>
+                    <span className="n">{p.name}</span>
+                    <span className={`rc rc-${p.role}`}>{ROLE[p.role]}</span>
+                    <span className="t num">{fmt(p.base_price)}</span>
+                  </li>
+                ))}
+                {queue.length > 15 && <li className="empty">+ {queue.length - 15} more in the player pool below</li>}
+                {!queue.length && <li className="empty">No more players to come.</li>}
+              </ol>
+            </section>
+          )}
         </aside>
       </div>
 
