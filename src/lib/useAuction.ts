@@ -47,6 +47,8 @@ export function useAuction(id: string): AuctionState {
   const [now, setNow] = useState(Date.now());
   const offset = useRef(0);
   const auctionRef = useRef<Auction | null>(null);
+  // True while the live-update connection is working. When it is, we re-download far less.
+  const [live, setLive] = useState(false);
   auctionRef.current = auction;
 
   const loadAuction = useCallback(async () => {
@@ -78,6 +80,11 @@ export function useAuction(id: string): AuctionState {
     if (cs.data) setCapStatus(cs.data as CaptainStatus[]);
     const err = t.error || p.error || b.error;
     if (err) setError(err.message);
+  }, [id]);
+
+  const loadBids = useCallback(async () => {
+    const { data } = await supabase.from('bids').select('*').eq('auction_id', id).order('id', { ascending: false }).limit(80);
+    if (data) setBids(data as Bid[]);
   }, [id]);
 
   const loadChat = useCallback(async () => {
@@ -121,30 +128,40 @@ export function useAuction(id: string): AuctionState {
         const old = payload.old as Partial<ChatMessage>;
         setChat(prev => prev.filter(x => x.id !== old.id));
       })
-      .subscribe(status => { if (status === 'SUBSCRIBED') reload(); });
+      .subscribe(status => {
+        if (status === 'SUBSCRIBED') { setLive(true); reload(); }
+        else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') setLive(false);
+      });
 
-    const resync = setInterval(reload, 6000);
     const onVisible = () => { if (document.visibilityState === 'visible') reload(); };
     document.addEventListener('visibilitychange', onVisible);
     return () => {
       clearTimeout(restTimer);
-      clearInterval(resync);
       document.removeEventListener('visibilitychange', onVisible);
       supabase.removeChannel(channel);
     };
   }, [id, reload, loadRest]);
 
-  // Safety net if live updates drop: while the auction is running, re-read the
-  // auction row every 1.5 s, and refresh bids, teams and players whenever it
-  // shows that something happened.
+  // Full re-download as a safety net: every 60 s while live updates work, every 6 s if they drop.
+  useEffect(() => {
+    const t = setInterval(reload, live ? 60000 : 6000);
+    return () => clearInterval(t);
+  }, [live, reload]);
+
+  // Safety net while the auction runs: re-read the small auction row (every 5 s when
+  // live updates work, every 1.5 s when they don't). Teams and players only change when
+  // a lot opens or closes, so they are refreshed then, not on every bid.
   const running = auction?.status === 'running' || auction?.status === 'paused';
   useEffect(() => {
     if (!running) return;
-    const t = setInterval(loadAuction, 1500);
+    const t = setInterval(loadAuction, live ? 5000 : 1500);
     return () => clearInterval(t);
-  }, [running, loadAuction]);
-  const changeKey = auction ? `${auction.status}|${auction.phase}|${auction.current_player_id}|${auction.bid_count}` : '';
-  useEffect(() => { if (changeKey) { loadRest(); loadChat(); } }, [changeKey, loadRest, loadChat]);
+  }, [running, live, loadAuction]);
+  const lotKey = auction ? `${auction.status}|${auction.phase}|${auction.current_player_id}` : '';
+  useEffect(() => { if (lotKey) loadRest(); }, [lotKey, loadRest]);
+  // New bids arrive live; only fetch them if the live connection is down.
+  const bidKey = auction?.bid_count ?? -1;
+  useEffect(() => { if (bidKey >= 0 && !live) loadBids(); }, [bidKey, live, loadBids]);
 
   // Server clock
   useEffect(() => {
