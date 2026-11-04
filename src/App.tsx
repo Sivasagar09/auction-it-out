@@ -1,13 +1,13 @@
 import { Route, Routes } from 'react-router-dom';
 import { configured } from './lib/supabase';
 import { useSession } from './lib/useSession';
-import Login from './pages/Login';
+import Login, { SetNewPassword } from './pages/Login';
 import Home from './pages/Home';
 import AuctionPage from './pages/AuctionPage';
 import Header from './components/Header';
 
 export default function App() {
-  const { session, ready } = useSession();
+  const { session, ready, recovering, doneRecovering } = useSession();
 
   if (!configured) {
     return (
@@ -29,6 +29,7 @@ export default function App() {
 
   if (!ready) return <div className="wrap"><Header session={null} /><p className="empty">Loading…</p></div>;
   if (!session) return <div className="wrap"><Header session={null} /><Login /></div>;
+  if (recovering) return <div className="wrap"><Header session={session} /><SetNewPassword onDone={doneRecovering} /></div>;
 
   return (
     <div className="wrap">

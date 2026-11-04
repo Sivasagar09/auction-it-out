@@ -355,14 +355,25 @@ function TeamCard({ a, team, players, mine }: { a: Auction; team: Team; players:
 
 function Pool({ players, teams, myTeam, isOwner, onUnskip }: { players: Player[]; teams: Team[]; myTeam: Team | null; isOwner: boolean; onUnskip: (id: string) => void }) {
   const [filter, setFilter] = useState<'ALL' | Player['role']>('ALL');
+  const [show, setShow] = useState<'ALL' | 'pool' | 'sold' | 'unsold' | 'skipped'>('ALL');
+  const count = (k: Player['status']) => players.filter(p => p.status === k).length;
+  const statusChips: ['ALL' | 'pool' | 'sold' | 'unsold' | 'skipped', string][] = [
+    ['ALL', 'Everyone'], ['pool', `Upcoming (${count('pool')})`], ['sold', `Sold (${count('sold')})`], ['unsold', `Unsold (${count('unsold')})`],
+    ...(count('skipped') ? [['skipped', `Skipped (${count('skipped')})`] as ['skipped', string]] : []),
+  ];
   const st: Record<Player['status'], string> = { pool: 'Upcoming', live: 'On the block', sold: 'Sold', unsold: 'Unsold', skipped: 'Skipped' };
   return (
     <section>
       <div className="pool-head">
         <h2>Player pool</h2>
-        <div className="filters">
+        <div className="filters" role="group" aria-label="Filter by status">
+          {statusChips.map(([k, label]) => (
+            <button key={k} aria-pressed={show === k} onClick={() => setShow(k)}>{label}</button>
+          ))}
+        </div>
+        <div className="filters" role="group" aria-label="Filter by role">
           {(['ALL', 'BAT', 'BOWL', 'AR', 'WK'] as const).map(f => (
-            <button key={f} aria-pressed={filter === f} onClick={() => setFilter(f)}>{f === 'ALL' ? 'All' : ROLE[f] + 's'}</button>
+            <button key={f} aria-pressed={filter === f} onClick={() => setFilter(f)}>{f === 'ALL' ? 'All roles' : ROLE[f] + 's'}</button>
           ))}
         </div>
       </div>
@@ -370,7 +381,7 @@ function Pool({ players, teams, myTeam, isOwner, onUnskip }: { players: Player[]
         <table>
           <thead><tr><th>Order</th><th>Player</th><th>Role</th><th className="r">Base price</th><th>Status</th><th className="r">Sold for</th><th>Team</th></tr></thead>
           <tbody>
-            {players.filter(p => filter === 'ALL' || p.role === filter).map(p => {
+            {players.filter(p => (filter === 'ALL' || p.role === filter) && (show === 'ALL' || p.status === show || (show === 'pool' && p.status === 'live'))).map(p => {
               const t = teams.find(x => x.id === p.sold_to);
               return (
                 <tr key={p.id} className={p.status === 'live' ? 'now' : ''}>
