@@ -72,3 +72,33 @@
 .upnext li .rc-AR{background:color-mix(in srgb,var(--ok) 14%,var(--surface));border-color:transparent}
 .upnext li .rc-WK{background:color-mix(in srgb,#C2417A 12%,var(--surface));border-color:transparent}
 .upnext li .t{margin-left:0!important;min-width:52px;text-align:right;color:var(--muted);font-weight:600!important}
+
+/* In-app video */
+.seat .tile .cam,.other .cam{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#0c1220}
+.cam.mirror{transform:scaleX(-1)}
+.seat.has-video .tile{background:#0c1220}
+.seat .mic-off{position:absolute;left:8px;bottom:8px;display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:rgba(12,18,32,.75);color:#fff}
+.seat .on-call{width:8px;height:8px;border-radius:50%;background:var(--ok);flex:none}
+.others{padding:4px 20px 0}
+.others .label{display:block;padding:10px 0 8px}
+.others-row{display:flex;gap:10px;flex-wrap:wrap}
+.other{position:relative;width:140px;aspect-ratio:16/9;border-radius:10px;overflow:hidden;background:var(--surface-2);display:grid;place-items:center;box-shadow:0 0 0 1px var(--line)}
+.other .face{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:var(--muted);color:#fff;font-weight:700;font-size:14px}
+.other-name{position:absolute;left:6px;bottom:6px;display:inline-flex;gap:4px;align-items:center;font-size:11px;font-weight:600;color:#fff;background:rgba(12,18,32,.72);padding:2px 6px;border-radius:5px}
+.vc-bar{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.vc-bar .btn{display:inline-flex;align-items:center;gap:6px}
+.vc-bar .vc-off{background:color-mix(in srgb,var(--live) 12%,var(--surface));border-color:color-mix(in srgb,var(--live) 40%,var(--line))}
+.vc-count{font-size:12px;color:var(--muted)}
+.vc-err{font-size:12px;max-width:420px}
+@media (max-width:760px){
+  .seat.has-video .tile{display:grid;aspect-ratio:4/3}
+  .seat.has-video .seat-name .mini{display:none}
+  .others{padding:4px 12px 0}
+  .other{width:110px}
+}
+.tabbar .vc-bar{margin-left:auto;padding:4px 0}
+.tabbar .vc-bar + .call-compact{margin-left:6px}
+.tabbar .vc-bar button.btn{border:1px solid var(--line);background:var(--surface);color:var(--ink);font-weight:600;padding:6px 12px;margin-bottom:0;border-radius:8px}
+.tabbar .vc-bar button.btn:hover{border-color:var(--muted)}
+.tabbar .vc-bar button.call-join{background:var(--ok);border-color:var(--ok);color:#fff;font-weight:800}
+.tabbar .vc-bar button.vc-off{background:color-mix(in srgb,var(--live) 12%,var(--surface));border-color:color-mix(in srgb,var(--live) 40%,var(--line))}

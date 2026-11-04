@@ -4,14 +4,18 @@ import { fmt, maxBidFor, nextBid, roleCounts, ROLE, squadOf, stepFor, whyNot } f
 import type { Auction, Player, Team } from '../lib/types';
 import type { AuctionState } from '../lib/useAuction';
 import Avatar from './Avatar';
+import { MicIcon, VideoTile } from './InAppVideo';
+import type { VideoCtl } from '../lib/useVideo';
 import './arena.css';
 
-type Props = AuctionState & { auction: Auction; isOwner: boolean; myTeam: Team | null; userId: string };
+type Props = AuctionState & { auction: Auction; isOwner: boolean; myTeam: Team | null; userId: string; video?: VideoCtl };
 
 const CIRC = 2 * Math.PI * 42;
 
 export default function Room(props: Props) {
-  const { auction: a, teams, players, bids, now, isOwner, myTeam, reload } = props;
+  const { auction: a, teams, players, bids, now, isOwner, myTeam, reload, video } = props;
+  const teamUsers = new Set(teams.map(t => t.user_id));
+  const others = (video?.peers ?? []).filter(p => !teamUsers.has(p.userId));
   const [pending, setPending] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
   const [confirmReset, setConfirmReset] = useState(false);
@@ -111,16 +115,20 @@ export default function Room(props: Props) {
               {teams.map((t, i) => {
                 const st = stateOf(a, t, players);
                 const isLead = st.kind === 'lead';
+                const peer = video?.byUser[t.user_id];
+                const cam = peer && peer.camOn && peer.video ? peer.video : null;
                 return (
-                  <div key={t.id} className={`seat${SEATS[i] ? ` seat-${SEATS[i]}` : ''}${isLead ? ` lead ${a.phase === 'live' ? (a.bid_count % 2 ? 'flashA' : 'flashB') : ''}` : ''}${st.kind === 'no' ? ' out' : ''}`}
+                  <div key={t.id} className={`seat${SEATS[i] ? ` seat-${SEATS[i]}` : ''}${isLead ? ` lead ${a.phase === 'live' ? (a.bid_count % 2 ? 'flashA' : 'flashB') : ''}` : ''}${st.kind === 'no' ? ' out' : ''}${cam ? ' has-video' : ''}`}
                     style={{ '--seat': t.color } as CSSProperties}>
                     <div className="tile">
-                      <span className="face" aria-hidden="true">{initialsOf(t.name)}</span>
+                      {cam ? <VideoTile track={cam} mirror={peer!.local} /> : <span className="face" aria-hidden="true">{initialsOf(t.name)}</span>}
                       {isLead && <span className="lead-tag num">{a.phase === 'result' ? 'Won' : 'Highest'} {fmt(a.current_bid)}</span>}
+                      {peer && !peer.micOn && <span className="mic-off" title="Muted" aria-label="Muted"><MicIcon off /></span>}
                     </div>
                     <div className="seat-name">
                       <span className="mini" aria-hidden="true">{initialsOf(t.name)}</span>
                       <span className="n">{t.name}</span>
+                      {peer && <span className="on-call" title="On video" aria-label="On video" />}
                       {t.id === myTeam?.id && <span className="you-tag">You</span>}
                     </div>
                   </div>
@@ -188,6 +196,20 @@ export default function Room(props: Props) {
                     )}
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+
+          {others.length > 0 && (
+            <div className="others">
+              <span className="label">Also on video</span>
+              <div className="others-row">
+                {others.map(p => (
+                  <div key={p.sessionId} className="other">
+                    {p.camOn && p.video ? <VideoTile track={p.video} mirror={p.local} /> : <span className="face">{initialsOf(p.name || '?')}</span>}
+                    <span className="other-name">{p.local ? 'You' : p.name}{!p.micOn && <MicIcon off />}</span>
+                  </div>
+                ))}
               </div>
             </div>
           )}

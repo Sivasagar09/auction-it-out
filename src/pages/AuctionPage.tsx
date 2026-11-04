@@ -7,6 +7,8 @@ import Room from '../components/Room';
 import { Leaderboard, PointsRules, ScoreEntry } from '../components/Points';
 import Chat from '../components/Chat';
 import VideoCall from '../components/VideoCall';
+import { CallAudio, VideoControls } from '../components/InAppVideo';
+import { useVideo } from '../lib/useVideo';
 import { isSeries, SeriesSetup } from '../components/Series';
 import Captains, { CaptainReminder, openPickFor } from '../components/Captains';
 import { say, speechSupported, useAnnouncer, useAnnouncerSettings } from '../lib/announcer';
@@ -18,6 +20,7 @@ const players = (s: { players: { sold_to: string | null }[] }, t: { id: string }
 export default function AuctionPage({ session }: { session: Session }) {
   const { id = '' } = useParams();
   const state = useAuction(id);
+  const video = useVideo(id);
   const { auction, loading, deleted, error } = state;
   const [tab, setTab] = useState<Tab | null>(null);
   const completed = auction?.status === 'completed';
@@ -64,7 +67,8 @@ export default function AuctionPage({ session }: { session: Session }) {
         {tabs.map(([k, label]) => (
           <button key={k} role="tab" aria-selected={current === k} onClick={() => setTab(k)}>{label}</button>
         ))}
-        {!completed && <VideoCall a={auction} isOwner={isOwner} onSaved={state.reload} compact />}
+        {!completed && <VideoControls v={video} />}
+        {!completed && (auction.meet_url || video.status === 'unavailable') && <VideoCall a={auction} isOwner={isOwner} onSaved={state.reload} compact />}
         {speechSupported && !completed && (
           <div className="voice">
             <button className={`btn voice-toggle${voice.on ? ' on' : ''}`} aria-pressed={voice.on}
@@ -85,7 +89,8 @@ export default function AuctionPage({ session }: { session: Session }) {
         )}
       </nav>
       {reminder && current !== 'captains' && players(state, myTeam) >= 2 && <CaptainReminder w={reminder} now={state.now} onOpen={() => setTab('captains')} />}
-      {current === 'room' && <Room {...props} />}
+      <CallAudio peers={video.peers} />
+      {current === 'room' && <Room {...props} video={video} />}
       {current === 'captains' && <Captains a={auction} isOwner={isOwner} myTeam={myTeam} teams={state.teams} players={state.players} matches={state.matches}
         windows={state.capWindows} picks={state.capPicks} status={state.capStatus} now={state.now} onSaved={state.reload} />}
       {current === 'board' && <Leaderboard a={auction} teams={state.teams} players={state.players} scores={state.scores} matches={state.matches} myTeam={myTeam} cap={cap} />}
