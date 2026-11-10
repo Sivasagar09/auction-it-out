@@ -9,6 +9,7 @@ import Chat from '../components/Chat';
 import VideoCall from '../components/VideoCall';
 import { CallAudio, VideoControls } from '../components/InAppVideo';
 import { useVideo } from '../lib/useVideo';
+import VideoLounge from '../components/VideoLounge';
 import { isSeries, SeriesSetup } from '../components/Series';
 import Captains, { CaptainReminder, openPickFor } from '../components/Captains';
 import { say, speechSupported, useAnnouncer, useAnnouncerSettings } from '../lib/announcer';
@@ -44,7 +45,9 @@ export default function AuctionPage({ session }: { session: Session }) {
   if (auction.status === 'setup') {
     return (
       <>
-        {call}
+        <CallAudio peers={video.peers} />
+        <VideoLounge v={video} teams={state.teams} />
+        {(auction.meet_url || video.status === 'unavailable') && call}
         <Lobby {...props} />
         <SeriesSetup a={auction} matches={state.matches} isOwner={isOwner} onSaved={state.reload} />
         <PointsRules a={auction} isOwner={isOwner} onSaved={state.reload} />

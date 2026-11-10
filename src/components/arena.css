@@ -102,3 +102,19 @@
 .tabbar .vc-bar button.btn:hover{border-color:var(--muted)}
 .tabbar .vc-bar button.call-join{background:var(--ok);border-color:var(--ok);color:#fff;font-weight:800}
 .tabbar .vc-bar button.vc-off{background:color-mix(in srgb,var(--live) 12%,var(--surface));border-color:color-mix(in srgb,var(--live) 40%,var(--line))}
+
+/* Lobby video lounge */
+.lounge .hint{display:block;margin-top:4px}
+.lounge .vc-bar .btn{border-radius:8px}
+.lounge .vc-bar .call-join{background:var(--ok);border-color:var(--ok);color:#fff;font-weight:800}
+.lounge .vc-bar .vc-off{background:color-mix(in srgb,var(--live) 12%,var(--surface));border-color:color-mix(in srgb,var(--live) 40%,var(--line))}
+.lounge-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-top:16px}
+.lounge-tile{position:relative;aspect-ratio:16/10;border-radius:12px;overflow:hidden;display:grid;place-items:center;
+  background:color-mix(in srgb,var(--seat) 14%,var(--surface-2));box-shadow:0 0 0 1px var(--line)}
+.lounge-tile.here{box-shadow:0 0 0 2px var(--seat)}
+.lounge-tile .cam{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#0c1220}
+.lounge-tile .face{width:52px;height:52px;border-radius:50%;display:grid;place-items:center;background:var(--seat);color:#fff;font-family:var(--display);font-weight:800;font-size:22px}
+.lounge-tile:not(.here) .face{opacity:.55}
+.lt-name{position:absolute;left:8px;bottom:8px;display:inline-flex;align-items:center;gap:5px;max-width:calc(100% - 16px);font-size:12px;font-weight:600;color:#fff;background:rgba(12,18,32,.72);padding:3px 8px;border-radius:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lt-away{position:absolute;top:8px;right:8px;font-size:11px;color:var(--muted);background:var(--surface);padding:2px 7px;border-radius:5px}
+@media (max-width:760px){.lounge-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}}
